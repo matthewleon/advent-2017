@@ -8,4 +8,4 @@ import Lib (circledMatchSum)
 main :: IO ()
 main = 
   readFile "input" >>=
-    putStrLn . show . circledMatchSum . fmap digitToInt . init
+    putStrLn . show . circledMatchSum . fmap digitToInt . init -- clip off "\n"
