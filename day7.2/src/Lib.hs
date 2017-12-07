@@ -43,7 +43,7 @@ makeWeightTree discs =
       discDescendantCountMap = countDescendants <$> discSubdiscMap
 
       root :: String
-      root = fst . head . reverse . sortOn snd $ M.toList discDescendantCountMap
+      root = fst . last . sortOn snd $ M.toList discDescendantCountMap
   in T.unfoldTree (\name -> let (weight, subdiscs) = getWeightSubdiscs name
                             in ((name, weight), subdiscs)
                   )
@@ -74,7 +74,7 @@ correctWeight (T.Node (_, w, cumW) trees@(t@(T.Node (_,_,tcw) _):ts)) =
                  . maximumBy (comparing snd)
                  . M.toList
                  $ foldl' (\m i -> M.insertWith (\_ c -> c + 1) i 1 m) M.empty cumWeights
-               outlierIndex = (fromJust (findIndex (/= mostCommonCumWeight) cumWeights))
+               outlierIndex = fromJust (findIndex (/= mostCommonCumWeight) cumWeights)
                outlierWeight = weights !! outlierIndex
                outlierCumWeight = cumWeights !! outlierIndex
             in Just $ outlierWeight - (outlierCumWeight - mostCommonCumWeight)
