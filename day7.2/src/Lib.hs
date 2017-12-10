@@ -16,7 +16,6 @@ data Disc = Disc String Int [String]
 getName :: Disc -> String
 getName (Disc name _ _ ) = name
 
-parseDisc :: String -> Disc
 parseDisc s = 
   let (name, rest)    = span isLower s
       (weight, rest') = span isDigit $ drop 2 rest
