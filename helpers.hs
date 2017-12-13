@@ -20,4 +20,4 @@ ints [] = []
 ints s =
   let (junk, startNum) = break isDigit s
       (num, rest)      = span isDigit startNum
-  in  read alphaNum : ints rest
+  in  read num : ints rest

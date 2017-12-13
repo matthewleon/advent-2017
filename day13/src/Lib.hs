@@ -11,7 +11,7 @@ type Delay = Int
 
 someFunc :: IO ()
 someFunc = do
-  let testInput = [(0, 3), (1, 2), (4, 6), (6, 4)]
+  let testInput = [(0, 3), (1, 2), (4, 4), (6, 4)]
   print $ severity 0 testInput
   inputLines <- readInputLines
   let parsedLines = fmap parseLine inputLines
