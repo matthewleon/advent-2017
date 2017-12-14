@@ -1,3 +1,5 @@
+{-# LANGUAGE ScopedTypeVariables #-}
+
 module Lib
     ( someFunc
     ) where
@@ -39,12 +41,14 @@ countRegions v = runST $ do
   go 0 (0, 0) mutV
 
   where
+  go :: forall s. Int -> (Int, Int) -> MV.STVector s (MV.STVector s Bool) -> ST s Int
   go nRegions (x, y) mutV = do
     val <- flip MV.read x =<< MV.read mutV y
     filled <- fill (x, y)
     if filled then next (nRegions + 1) (x, y) else next nRegions (x, y)
 
     where
+    fill :: (Int, Int) -> ST s Bool
     fill (x, y) = do
       val <- flip MV.read x =<< MV.read mutV y
       when val $ do
@@ -55,6 +59,7 @@ countRegions v = runST $ do
         when (y < 127) (void $ fill (x, y + 1))
       return val
 
+    next :: Int -> (Int, Int) -> ST s Int
     next nRegions' (127, 127) = return nRegions'
     next nRegions' (127, y)   = go nRegions' (0, y + 1) mutV
     next nRegions' (x, y)   = go nRegions' (x + 1, y) mutV
