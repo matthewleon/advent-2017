@@ -26,7 +26,7 @@ numsAfterZero maxSteps numSteps = go 1 0 []
       else
         let newPos = ((currentPos + numSteps) `mod` n) + 1
             acc' = if newPos == 1 then n:acc else acc
-        in  go (n+1) newPos acc'
+        in  acc' `seq` go (n+1) newPos acc'
 
 someFunc :: IO ()
 someFunc = do
