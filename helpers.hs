@@ -13,7 +13,7 @@ alphaNumStrings [] = []
 alphaNumStrings s =
   let (junk, startAlphaNum) = break isAlphaNum s
       (alphaNum, rest)      = span isAlphaNum startAlphaNum
-  in  alphaNum : alphaStrings rest
+  in  alphaNum : alphaNumStrings rest
 
 ints :: String -> [Int]
 ints [] = []
