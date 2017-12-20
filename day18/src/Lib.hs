@@ -9,10 +9,10 @@ import qualified Data.Map.Strict as M
 import Debug.Trace
 
 type Program = V.Vector Instruction
-type Registers = M.Map Reg Int
+type Registers = M.Map Reg Integer
 type Reg = Char
 type Counter = Int
-type Frequency = Int
+type Frequency = Integer
 
 data State = State !Program !Registers !Counter !Frequency
   deriving (Show, Eq)
@@ -20,11 +20,11 @@ data State = State !Program !Registers !Counter !Frequency
 data State2 = State2 !Program !PrgState !PrgState
   deriving (Show)
 
-data PrgState = Running !Registers !Counter ![Int] !Int
+data PrgState = Running !Registers !Counter ![Integer] !Int
               | Waiting !Registers !Counter !Int
   deriving (Show)
 
-data RegOrVal = Reg !Reg | Val !Int
+data RegOrVal = Reg !Reg | Val !Integer
   deriving (Show, Eq)
 data Instruction =
     Snd !Reg
@@ -46,7 +46,7 @@ someFunc = do
   print $ runMachine program
 
   testProgram <- V.fromList . fmap (parseInstruction . words) . lines <$> readFile "testinput"
-  print $ runMachine2 testProgram
+  --print $ runMachine2 testProgram
   print $ runMachine2 program
 
 debugState :: State -> String
@@ -62,7 +62,7 @@ initState2 p = State2 p (initPrgState 0) (initPrgState 1)
     Running (M.insert 'p' pid (M.fromList $ (\c -> (c, 0)) <$> ['a'..'z']))
              0 [] 0
 
-runMachine :: Program -> Int
+runMachine :: Program -> Frequency
 runMachine = go . initState
   where
     go s = case iterState s of
@@ -81,32 +81,30 @@ runMachine2 = go . initState2
         go $! s'
 
 quickShow :: PrgState -> String
-quickShow (Running _ ctr q i) = "Running " ++ unwords [show ctr, show q, show i]
-quickShow (Waiting _ ctr i) = "Waiting " ++ unwords [show ctr, show i]
+quickShow (Running rs ctr q i) = "Running " ++ unwords [show ctr, show q, show i, quickShowRs rs]
+quickShow (Waiting rs ctr i) = "Waiting " ++ unwords [show ctr, show i, quickShowRs rs]
+
+quickShowRs :: Registers -> String
+quickShowRs = show . filter (\(_, v) -> v /= 0) . M.toAscList
 
 iterState2 :: State2 -> Either Int State2
 iterState2 (State2 prog prgState1 prgState2) = iter' prgState1 prgState2
   where
   iter' :: PrgState -> PrgState -> Either Int State2
-  iter' (Waiting _ _ sent) Waiting{} = Left sent
+  iter' Waiting{} (Waiting _ _ sent) = Left sent
   iter' (Running rs1 c1 q1 i1) _ =
     let (maybeI, prgState1') = stepProg2 prog prgState1
-    in  Right $ State2 prog prgState1'
-        $ case maybeI of
-            Just i -> enqueue prgState2 i
-            Nothing -> prgState2
+    in  Right $ State2 prog prgState1' $ enqueue prgState2 maybeI
   iter' _ (Running rs2 c2 q2 i2) =
     let (maybeI, prgState2') = stepProg2 prog prgState2
-    in  Right $ (\s -> State2 prog s prgState2')
-        $ case maybeI of
-            Just i -> enqueue prgState1 i
-            Nothing -> prgState1
+    in  Right $ State2 prog (enqueue prgState1 maybeI) prgState2'
 
-enqueue :: PrgState -> Int -> PrgState
-enqueue (Running rs c is sent) i = Running rs c (is ++ [i]) sent
-enqueue (Waiting rs c sent) i = Running rs c [i] sent
+enqueue :: PrgState -> Maybe Integer -> PrgState
+enqueue s Nothing = s
+enqueue (Running rs c is sent) (Just i) = Running rs c (is ++ [i]) sent
+enqueue (Waiting rs c sent) (Just i) = Running rs c [i] sent
 
-stepProg2 :: Program -> PrgState -> (Maybe Int, PrgState)
+stepProg2 :: Program -> PrgState -> (Maybe Integer, PrgState)
 stepProg2 _ w@Waiting{} = (Nothing, w)
 stepProg2 prog (Running rs ctr q sent) =
   let ctr' = ctr + 1
@@ -119,7 +117,7 @@ stepProg2 prog (Running rs ctr q sent) =
        Mul r rv -> (Nothing,
          Running (modReg rs r (* getRegOrVal rs rv)) ctr' q sent)
        Mod r rv -> (Nothing,
-         Running (modReg rs r (`mod` getRegOrVal rs rv)) ctr' q sent)
+         Running (modReg rs r (`rem` getRegOrVal rs rv)) ctr' q sent)
        Rcv r    -> case q of
                     i:is -> (Nothing, Running (setReg rs r i) ctr' is sent)
                     _    -> (Nothing, Waiting rs ctr sent)
@@ -127,13 +125,13 @@ stepProg2 prog (Running rs ctr q sent) =
          Running
           rs
           (ctr + (if getRegOrVal rs rv1 > 0
-             then getRegOrVal rs rv2
+             then fromIntegral $ getRegOrVal rs rv2
              else 1
           ))
           q
           sent)
 
-iterState :: State -> Either Int State
+iterState :: State -> Either Frequency State
 iterState (State prog rs ctr freq) = go rs ctr freq
   where
   go rs ctr freq =
@@ -155,22 +153,22 @@ iterState (State prog rs ctr freq) = go rs ctr freq
                        prog
                        rs
                        (ctr + (if getRegOrVal rs rv1 > 0
-                          then getRegOrVal rs rv2
+                          then fromIntegral $ getRegOrVal rs rv2
                           else 1
                        ))
                        freq
 
-getRegOrVal :: Registers -> RegOrVal -> Int
+getRegOrVal :: Registers -> RegOrVal -> Integer
 getRegOrVal rs (Reg r) = getReg rs r
 getRegOrVal rs (Val v) = v
 
-getReg :: Registers -> Reg -> Int
+getReg :: Registers -> Reg -> Integer
 getReg = flip (M.findWithDefault 0)
 
-setReg :: Registers -> Reg -> Int -> Registers
+setReg :: Registers -> Reg -> Integer -> Registers
 setReg rs r i = M.insert r i rs
 
-modReg :: Registers -> Reg -> (Int -> Int) -> Registers
+modReg :: Registers -> Reg -> (Integer -> Integer) -> Registers
 modReg rs r f = M.adjust f r rs
 
 parseInstruction :: [String] -> Instruction
